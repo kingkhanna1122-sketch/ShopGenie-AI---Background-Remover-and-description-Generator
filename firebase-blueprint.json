@@ -1,0 +1,46 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and subscription data",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "freeCreditsUsed": { "type": "integer", "description": "Number of free credits used (max 4)" },
+        "isSubscribed": { "type": "boolean" },
+        "subscriptionId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email"]
+    },
+    "ProductTask": {
+      "title": "Product Task",
+      "description": "A background removal or description generation task",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "originalImageUrl": { "type": "string" },
+        "processedImageUrl": { "type": "string" },
+        "description": { "type": "string" },
+        "platform": { "type": "string", "enum": ["tiktok", "shopify", "amazon", "other"] },
+        "status": { "type": "string", "enum": ["pending", "completed", "failed"] },
+        "type": { "type": "string", "enum": ["bg-removal", "description", "both"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User data"
+    },
+    "/tasks/{taskId}": {
+      "schema": "ProductTask",
+      "description": "Background removal and description tasks"
+    }
+  }
+}

@@ -1,0 +1,91 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {userId}
+    // Fields:
+    //   - uid: string (required)
+    //   - email: string (required)
+    //   - displayName: string (optional)
+    //   - photoURL: string (optional)
+    //   - freeCreditsUsed: number (required, 0-4)
+    //   - isSubscribed: bool (required)
+    //   - subscriptionId: string (optional)
+    //   - createdAt: timestamp (required)
+    //
+    // Collection: tasks
+    // Document ID: {taskId}
+    // Fields:
+    //   - userId: string (required)
+    //   - originalImageUrl: string (optional)
+    //   - processedImageUrl: string (optional)
+    //   - description: string (optional)
+    //   - platform: string (tiktok, shopify, amazon, other)
+    //   - status: string (pending, completed, failed)
+    //   - type: string (bg-removal, description, both)
+    //   - createdAt: timestamp (required)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.userId;
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'freeCreditsUsed', 'isSubscribed', 'createdAt']) &&
+             data.uid is string &&
+             data.email is string &&
+             data.freeCreditsUsed is number &&
+             data.isSubscribed is bool &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidTask(data) {
+      return data.keys().hasAll(['userId', 'status', 'type', 'createdAt']) &&
+             data.userId == request.auth.uid &&
+             data.status in ['pending', 'completed', 'failed'] &&
+             data.type in ['bg-removal', 'description', 'both'] &&
+             data.createdAt is timestamp;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+             ((exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+               get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
+              (request.auth.token.email == "imdadsadiq27@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isAuthenticated() && isOwner(userId) && isValidUser(request.resource.data);
+      allow update: if (isOwner(userId) && isValidUser(request.resource.data)) || isAdmin();
+    }
+
+    match /tasks/{taskId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isAuthenticated() && isValidTask(request.resource.data);
+      allow update: if (isDocOwner() && isValidTask(request.resource.data)) || isAdmin();
+      allow delete: if isDocOwner() || isAdmin();
+    }
+  }
+}
